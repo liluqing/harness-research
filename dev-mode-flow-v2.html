@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Harness 开发模式 v2 — 全流程可视化</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #222636;
+    --border: #2a2f3d;
+    --text: #c9cdd4;
+    --text-muted: #6b7280;
+    --text-bright: #f0f2f5;
+    --human: #f59e0b;
+    --human-bg: rgba(245, 158, 11, 0.08);
+    --human-border: rgba(245, 158, 11, 0.25);
+    --agent: #3b82f6;
+    --agent-bg: rgba(59, 130, 246, 0.08);
+    --agent-border: rgba(59, 130, 246, 0.25);
+    --spec: #8b5cf6;
+    --design: #06b6d4;
+    --code: #10b981;
+    --test: #ef4444;
+    --green: #10b981;
+    --red: #ef4444;
+    --radius: 8px;
+    --radius-lg: 12px;
+    --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', sans-serif;
+    --mono: 'SF Mono', 'Cascadia Code', 'JetBrains Mono', monospace;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    line-height: 1.6;
+    padding: 40px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+  h1 { font-size: 28px; font-weight: 700; color: var(--text-bright); margin-bottom: 4px; }
+  .subtitle { color: var(--text-muted); font-size: 14px; margin-bottom: 40px; }
+
+  /* ── Legend ── */
+  .legend {
+    display: flex; gap: 24px; margin-bottom: 32px;
+    flex-wrap: wrap;
+  }
+  .legend-item {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 13px; color: var(--text-muted);
+  }
+  .legend-dot {
+    width: 12px; height: 12px; border-radius: 3px;
+  }
+  .legend-dot.human { background: var(--human); }
+  .legend-dot.agent { background: var(--agent); }
+  .legend-dot.spec { background: var(--spec); }
+  .legend-dot.design { background: var(--design); }
+  .legend-dot.code { background: var(--green); }
+  .legend-dot.test { background: var(--red); }
+
+  /* ── Pipeline ── */
+  .pipeline {
+    display: flex; align-items: stretch; gap: 0;
+    margin-bottom: 48px; overflow-x: auto;
+    padding-bottom: 8px;
+  }
+  .stage {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 20px 24px;
+    min-width: 140px;
+    position: relative;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .stage:first-child { border-radius: var(--radius-lg) 0 0 var(--radius-lg); }
+  .stage:last-child { border-radius: 0 var(--radius-lg) var(--radius-lg) 0; }
+  .stage-num {
+    font-family: var(--mono); font-size: 11px; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 1px;
+  }
+  .stage-name { font-size: 15px; font-weight: 600; color: var(--text-bright); }
+  .stage-desc { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+
+  .stage.human {
+    background: var(--human-bg);
+    border-color: var(--human-border);
+    border-width: 2px;
+  }
+  .stage.human .stage-num { color: var(--human); }
+  .stage.agent {
+    background: var(--agent-bg);
+    border-color: var(--agent-border);
+    border-width: 1px;
+  }
+  .stage.agent .stage-num { color: var(--agent); }
+
+  .stage-badge {
+    display: inline-block; font-size: 10px; font-weight: 700;
+    padding: 2px 8px; border-radius: 4px; text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .badge-human { background: var(--human); color: #000; }
+  .badge-agent { background: var(--agent); color: #fff; }
+  .badge-loop { background: var(--surface2); color: var(--text-muted); border: 1px solid var(--border); }
+
+  .arrow {
+    display: flex; align-items: center; justify-content: center;
+    min-width: 32px; color: var(--text-muted); font-size: 18px;
+    flex-shrink: 0;
+  }
+
+  /* ── Section ── */
+  .section {
+    margin-bottom: 48px;
+  }
+  .section-title {
+    font-size: 18px; font-weight: 700; color: var(--text-bright);
+    margin-bottom: 16px; padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .section-icon { font-size: 20px; }
+
+  /* ── Decision Cards ── */
+  .decision-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+    gap: 16px;
+  }
+  .decision-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    border-left: 3px solid var(--human);
+  }
+  .decision-card .card-header {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 12px;
+  }
+  .decision-card .card-stage {
+    font-family: var(--mono); font-size: 12px; font-weight: 700;
+    color: var(--human); background: var(--human-bg);
+    padding: 2px 8px; border-radius: 4px;
+  }
+  .decision-card .card-title {
+    font-size: 15px; font-weight: 600; color: var(--text-bright);
+  }
+  .decision-card .card-who {
+    font-size: 12px; color: var(--text-muted);
+    margin-left: auto;
+  }
+  .decision-types {
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .decision-type {
+    font-size: 13px; color: var(--text);
+    padding: 6px 10px;
+    background: var(--surface2);
+    border-radius: 4px;
+    display: flex; align-items: flex-start; gap: 8px;
+  }
+  .decision-type .dt-icon {
+    width: 18px; height: 18px; display: flex; align-items: center;
+    justify-content: center; font-size: 11px; flex-shrink: 0;
+    margin-top: 1px;
+    color: var(--human);
+  }
+  .decision-type .dt-label { font-weight: 500; color: var(--text-bright); min-width: 80px; }
+  .decision-type .dt-desc { color: var(--text-muted); }
+
+  /* ── Agent Autonomous Zone ── */
+  .agent-zone {
+    background: var(--agent-bg);
+    border: 1px solid var(--agent-border);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+  }
+  .agent-zone h3 {
+    font-size: 16px; color: var(--agent); margin-bottom: 16px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .agent-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 12px;
+  }
+  .agent-item {
+    background: var(--surface);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    border: 1px solid var(--border);
+  }
+  .agent-item .ai-header {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 6px;
+  }
+  .agent-item .ai-icon { color: var(--agent); font-size: 16px; }
+  .agent-item .ai-title { font-size: 14px; font-weight: 600; color: var(--text-bright); }
+  .agent-item .ai-desc { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+  .agent-item .ai-output {
+    margin-top: 8px; font-size: 11px; color: var(--agent);
+    font-family: var(--mono);
+  }
+
+  /* ── Spec Decision Tree ── */
+  .spec-flow {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+  }
+  .spec-flow h3 {
+    font-size: 16px; color: var(--text-bright); margin-bottom: 16px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .spec-tree {
+    display: flex; flex-direction: column; gap: 14px;
+  }
+  .spec-tree-row {
+    display: flex; align-items: stretch; gap: 0;
+  }
+  .spec-tree-node {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    padding: 14px 18px;
+    border-radius: var(--radius);
+    flex: 1;
+    min-width: 0;
+  }
+  .spec-tree-node.root { border-left: 3px solid var(--spec); }
+  .spec-tree-node.auto { border-left: 3px solid var(--agent); background: var(--agent-bg); }
+  .spec-tree-node.ask { border-left: 3px solid var(--human); background: var(--human-bg); }
+  .spec-tree-node.confirm { border-left: 3px solid var(--green); }
+  .spec-tree-node .sn-label {
+    font-size: 11px; color: var(--text-muted); text-transform: uppercase;
+    letter-spacing: 0.5px; margin-bottom: 4px;
+  }
+  .spec-tree-node .sn-title {
+    font-size: 14px; font-weight: 600; color: var(--text-bright);
+  }
+  .spec-tree-node .sn-desc {
+    font-size: 12px; color: var(--text-muted); margin-top: 4px; line-height: 1.5;
+  }
+  .spec-tree-arrow {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; min-width: 40px; flex-shrink: 0;
+    color: var(--text-muted); font-size: 14px; gap: 2px;
+  }
+  .spec-tree-branch {
+    display: flex; flex-direction: column; gap: 4px;
+    font-size: 10px; color: var(--text-muted); letter-spacing: 0.3px;
+  }
+  .decision-rule {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 18px;
+    margin-top: 8px;
+    font-size: 12px; color: var(--text-muted);
+    display: flex; align-items: flex-start; gap: 8px;
+  }
+  .decision-rule .dr-icon { font-size: 16px; flex-shrink: 0; }
+  .decision-rule .dr-label { font-weight: 600; color: var(--text-bright); }
+  .decision-rule .dr-desc { margin-top: 2px; line-height: 1.5; }
+
+  /* ── TDD Loop ── */
+  .tdd-loop {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    margin-top: 16px;
+  }
+  .tdd-loop h3 {
+    font-size: 16px; color: var(--text-bright); margin-bottom: 16px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .tdd-steps {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  }
+  .tdd-step {
+    background: var(--surface2);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    text-align: center;
+    min-width: 100px;
+  }
+  .tdd-step.red { border: 2px solid var(--red); }
+  .tdd-step.green { border: 2px solid var(--green); }
+  .tdd-step .ts-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  .tdd-step .ts-name { font-size: 14px; font-weight: 600; color: var(--text-bright); margin-top: 4px; }
+  .tdd-arrow { color: var(--text-muted); font-size: 16px; flex-shrink: 0; }
+
+  /* ── Optimization Strategy ── */
+  .opt-framework {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 16px;
+  }
+  .opt-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+  }
+  .opt-card .oc-num {
+    font-family: var(--mono); font-size: 24px; font-weight: 700;
+    color: var(--design); opacity: 0.6;
+  }
+  .opt-card .oc-title {
+    font-size: 15px; font-weight: 600; color: var(--text-bright);
+    margin: 8px 0;
+  }
+  .opt-card .oc-desc { font-size: 13px; color: var(--text-muted); line-height: 1.6; }
+  .opt-card .oc-action {
+    margin-top: 12px; font-size: 12px; color: var(--design);
+    font-family: var(--mono);
+    padding: 6px 10px;
+    background: rgba(6, 182, 212, 0.08);
+    border-radius: 4px;
+  }
+
+  /* ── Footnotes ── */
+  .footnotes {
+    margin-top: 40px; padding: 20px;
+    background: var(--surface);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    font-size: 12px; color: var(--text-muted);
+    line-height: 1.8;
+  }
+  .footnotes strong { color: var(--text-bright); }
+</style>
+</head>
+<body>
+
+<h1>🔧 Harness 开发模式 v2 — 全流程可视化</h1>
+<p class="subtitle">从 PRD 到可运行代码 · 垂直切片 + 真 TDD · 决策树先筛再问 · 概要确认再展开</p>
+
+<!-- Legend -->
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot human"></div> 人工决策点</div>
+  <div class="legend-item"><div class="legend-dot agent"></div> Agent 自主区</div>
+  <div class="legend-item"><div class="legend-dot spec"></div> Spec</div>
+  <div class="legend-item"><div class="legend-dot design"></div> 技术设计</div>
+  <div class="legend-item"><div class="legend-dot code"></div> 编码</div>
+  <div class="legend-item"><div class="legend-dot test"></div> 测试</div>
+</div>
+
+<!-- ── Pipeline ── -->
+<div class="pipeline">
+  <!-- Stage 1: Spec -->
+  <div class="stage human">
+    <span class="stage-num">阶段 ①</span>
+    <span class="stage-name">Spec 生成</span>
+    <span class="stage-desc">决策树快筛 → 概要<br>确认 → 展开详细 Spec<br>需求分析师帽子</span>
+    <span class="stage-badge badge-human">👤 概要确认</span>
+  </div>
+  <div class="arrow">→</div>
+  <!-- Stage 2: Design -->
+  <div class="stage human">
+    <span class="stage-num">阶段 ②</span>
+    <span class="stage-name">技术设计</span>
+    <span class="stage-desc">API + DLL + DB<br>一份文档搞定</span>
+    <span class="stage-badge badge-human">👤 推荐扫一眼</span>
+  </div>
+  <div class="arrow">→</div>
+  <!-- Stage 3: UI -->
+  <div class="stage agent">
+    <span class="stage-num">阶段 ③</span>
+    <span class="stage-name">前端设计</span>
+    <span class="stage-desc">仅复杂逻辑时触发<br>附在②后一起看</span>
+    <span class="stage-badge badge-agent">🤖 自主</span>
+  </div>
+  <div class="arrow">→</div>
+  <!-- Slice loop -->
+  <div class="stage agent" style="border-style: dashed; min-width: 200px;">
+    <span class="stage-num">阶段 ④→⑧</span>
+    <span class="stage-name">垂直切片循环</span>
+    <span class="stage-desc">逐端点 TDD 交付<br>每切片独立走完</span>
+    <span class="stage-badge badge-loop">🔁 循环</span>
+    <span class="stage-badge badge-agent" style="margin-top: 4px;">🤖 自主</span>
+  </div>
+  <div class="arrow">→</div>
+  <!-- Final -->
+  <div class="stage human">
+    <span class="stage-num">最终</span>
+    <span class="stage-name">PR Review + 验收</span>
+    <span class="stage-desc">全部切片完成后<br>详细代码审查</span>
+    <span class="stage-badge badge-human">👤 必须</span>
+  </div>
+</div>
+
+<!-- ── Spec 阶段内部流程 ── -->
+<div class="section">
+  <div class="section-title">
+    <span class="section-icon">🔍</span> 阶段 ① 内部流程：决策树 → 概要 → 确认 → 详细 Spec
+  </div>
+
+  <div class="spec-flow">
+    <h3>🧠 Spec 生成决策树（Agent 内部执行，只输出结果给人）</h3>
+    <div class="spec-tree">
+      <!-- Row 1 -->
+      <div class="spec-tree-row">
+        <div class="spec-tree-node root">
+          <div class="sn-label">STEP 1</div>
+          <div class="sn-title">读取 PRD + 项目上下文</div>
+          <div class="sn-desc">读 PRD、已有代码、设计文档、项目约定。提取所有待决策点。</div>
+        </div>
+      </div>
+      <div class="spec-tree-row">
+        <div class="spec-tree-arrow">▼</div>
+      </div>
+      <!-- Row 2: Branch -->
+      <div class="spec-tree-row">
+        <div class="spec-tree-node root">
+          <div class="sn-label">STEP 2</div>
+          <div class="sn-title">逐项走决策树：这个决策点谁来定？</div>
+        </div>
+      </div>
+      <div class="spec-tree-row">
+        <div class="spec-tree-arrow" style="font-size: 18px;">⬏</div>
+        <div class="spec-tree-arrow" style="font-size: 18px;">⬐</div>
+        <div class="spec-tree-arrow" style="font-size: 18px;">⬎</div>
+      </div>
+      <div class="spec-tree-row" style="gap: 12px;">
+        <div class="spec-tree-node auto">
+          <div class="sn-label">🟢 分支 A：Agent 自主决策</div>
+          <div class="sn-title">项目上下文可推导</div>
+          <div class="sn-desc">已有代码结构、既有约定、行业通用做法能明确推导的决策。<br>Agent 直接定，一句话告知用户方案（不提问）。</div>
+          <div style="margin-top: 8px; font-size: 11px; color: var(--agent); font-family: var(--mono);">
+            例：表名用 user 还是 users？→ 项目已有表都用单数，跟单数。
+          </div>
+        </div>
+        <div class="spec-tree-node ask">
+          <div class="sn-label">🟠 分支 B：必须问用户</div>
+          <div class="sn-title">影响大 / 需求模糊</div>
+          <div class="sn-desc">对架构、范围、体验有重大影响；或 PRD 完全没提、Agent 无法推断。<br>给出 2~3 个选项 + 建议，让用户选。</div>
+          <div style="margin-top: 8px; font-size: 11px; color: var(--human); font-family: var(--mono);">
+            例：删除用户后历史数据保留还是级联删除？<br>→ A. 软删除，保留数据  B. 硬删除+归档  C. 仅解关联<br>→ 建议 A，原因：数据可追溯，风险最低
+          </div>
+        </div>
+      </div>
+      <div class="spec-tree-row">
+        <div class="spec-tree-arrow">▼</div>
+      </div>
+      <!-- Row 3: Summary -->
+      <div class="spec-tree-row">
+        <div class="spec-tree-node" style="border-left: 3px solid var(--design);">
+          <div class="sn-label">STEP 3</div>
+          <div class="sn-title">汇总输出：Spec 概要（几句自然语言）</div>
+          <div class="sn-desc">
+            把决策结果整合成一段话，覆盖：做什么、核心流程、关键决策、边界说明。
+            <br>含：Agent 自己定的决策（一句话告知）+ 需要用户选的决策（带选项）。
+            <br><strong>不要写详细 Spec——概要通过后再展开。</strong>
+          </div>
+          <div style="margin-top: 8px; font-size: 11px; color: var(--design); font-family: var(--mono);">
+            📤 输出格式 → 飞书消息发给用户确认
+          </div>
+        </div>
+      </div>
+      <div class="spec-tree-row">
+        <div class="spec-tree-arrow">▼</div>
+      </div>
+      <!-- Row 4: Human confirm -->
+      <div class="spec-tree-row">
+        <div class="spec-tree-node confirm">
+          <div class="sn-label">STEP 4 · 👤 人介入</div>
+          <div class="sn-title">用户确认概要</div>
+          <div class="sn-desc">用户确认方向、回答决策问题。Agent 根据反馈调整后→ 进入详细 Spec 撰写。</div>
+        </div>
+      </div>
+      <div class="spec-tree-row">
+        <div class="spec-tree-arrow">▼</div>
+      </div>
+      <!-- Row 5: Detail Spec -->
+      <div class="spec-tree-row">
+        <div class="spec-tree-node" style="border-left: 3px solid var(--design);">
+          <div class="sn-label">STEP 5 · 🤖 Agent 自主</div>
+          <div class="sn-title">展开详细 Spec</div>
+          <div class="sn-desc">基于确认的概要，写完整的用户故事、正常流程、异常边界、验收标准。<br>写入 specs/xxx-spec.md，附在 PRD 旁。</div>
+          <div style="margin-top: 8px; font-size: 11px; color: var(--design); font-family: var(--mono);">
+            📄 产出 → specs/功能名-spec.md
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Communication Rules -->
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; margin-top: 16px;">
+    <div class="decision-rule">
+      <span class="dr-icon">✅</span>
+      <div>
+        <div class="dr-label">能推导的 → 直接定，顺带告知</div>
+        <div class="dr-desc">「技术设计阶段表名会用 xxx，跟项目已有表命名一致。」<br>不提问，一句话带过。用户如有异议自然会纠正。</div>
+      </div>
+    </div>
+    <div class="decision-rule">
+      <span class="dr-icon">🎯</span>
+      <div>
+        <div class="dr-label">要问的 → 给选项 + 建议</div>
+        <div class="dr-desc">不要说「要不要做 XX」，要说「XX 有 A/B/C 三种方式，建议 A，因为...。你怎么看？」<br>每次不超过 3 个决策点，太多说明 PRD 本身需要回炉。</div>
+      </div>
+    </div>
+    <div class="decision-rule">
+      <span class="dr-icon">📏</span>
+      <div>
+        <div class="dr-label">问之前先过脑子</div>
+        <div class="dr-desc">不是所有模糊点都要问。问自己：这个决策对最终产出的影响超过 10% 吗？不超过 → Agent 自己定。<br>判断标准：影响范围 × 不可逆程度。</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Decision Points ── -->
+<div class="section">
+  <div class="section-title">
+    <span class="section-icon">🎯</span> 人工决策点 & 决策内容
+  </div>
+
+  <div class="decision-grid">
+    <!-- DP 1 -->
+    <div class="decision-card">
+      <div class="card-header">
+        <span class="card-stage">决策点 ①</span>
+        <span class="card-title">Spec 概要确认</span>
+        <span class="card-who">用户决策</span>
+      </div>
+      <div class="decision-types">
+        <div class="decision-type">
+          <span class="dt-icon">📋</span>
+          <span class="dt-label">方向判断</span>
+          <span class="dt-desc">Spec 概要里的功能范围对不对？有没有漏掉核心场景？</span>
+        </div>
+        <div class="decision-type">
+          <span class="dt-icon">🔀</span>
+          <span class="dt-label">关键决策选择</span>
+          <span class="dt-desc">Agent 提出的 2~3 个二选一/三选一决策（范围/策略/取舍）</span>
+        </div>
+        <div class="decision-type">
+          <span class="dt-icon">⚠️</span>
+          <span class="dt-label">边界取舍</span>
+          <span class="dt-desc">异常场景的处理粒度够不够？并发、幂等要不要这版做？</span>
+        </div>
+        <div class="decision-type">
+          <span class="dt-icon">💡</span>
+          <span class="dt-label">Agent 自主决策确认</span>
+          <span class="dt-desc">Agent 基于上下文自己定的决策是否认可？（有异议可纠正）</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- DP 2 -->
+    <div class="decision-card">
+      <div class="card-header">
+        <span class="card-stage">决策点 ②</span>
+        <span class="card-title">技术设计确认</span>
+        <span class="card-who">用户扫一眼（推荐）</span>
+      </div>
+      <div class="decision-types">
+        <div class="decision-type">
+          <span class="dt-icon">🏗️</span>
+          <span class="dt-label">架构方向</span>
+          <span class="dt-desc">API 结构、实体关系是否与已有系统一致？</span>
+        </div>
+        <div class="decision-type">
+          <span class="dt-icon">🔑</span>
+          <span class="dt-label">关键规则</span>
+          <span class="dt-desc">业务规则（级联删除、唯一约束）理解对吗？</span>
+        </div>
+        <div class="decision-type">
+          <span class="dt-icon">🗄️</span>
+          <span class="dt-label">数据模型</span>
+          <span class="dt-desc">表结构、索引设计是否合理？有没有遗漏字段？</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- DP 3 -->
+    <div class="decision-card">
+      <div class="card-header">
+        <span class="card-stage">决策点 ③</span>
+        <span class="card-title">PR Review + 验收</span>
+        <span class="card-who">用户决策</span>
+      </div>
+      <div class="decision-types">
+        <div class="decision-type">
+          <span class="dt-icon">✅</span>
+          <span class="dt-label">功能验收</span>
+          <span class="dt-desc">代码实现的逻辑是否满足 Spec 的验收标准？</span>
+        </div>
+        <div class="decision-type">
+          <span class="dt-icon">🔍</span>
+          <span class="dt-label">代码质量</span>
+          <span class="dt-desc">命名、结构、错误处理、日志是否达团队标准？</span>
+        </div>
+        <div class="decision-type">
+          <span class="dt-icon">🧪</span>
+          <span class="dt-label">测试覆盖</span>
+          <span class="dt-desc">测试是否覆盖了关键路径和边界？Mock 策略是否合理？</span>
+        </div>
+        <div class="decision-type">
+          <span class="dt-icon">🚀</span>
+          <span class="dt-label">合并决策</span>
+          <span class="dt-desc">是否合并？是否需要补充集成测试？</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- DP: Ad-hoc -->
+    <div class="decision-card" style="border-left-color: var(--design);">
+      <div class="card-header">
+        <span class="card-stage" style="background: rgba(6,182,212,0.1); color: var(--design);">决策点 ⚡</span>
+        <span class="card-title">按需升级（Agent 请求）</span>
+        <span class="card-who">发生频率：低</span>
+      </div>
+      <div class="decision-types">
+        <div class="decision-type">
+          <span class="dt-icon" style="color: var(--design);">🤷</span>
+          <span class="dt-label">设计冲突</span>
+          <span class="dt-desc">编码中发现设计文档有歧义/矛盾，Agent 无法自行判断</span>
+        </div>
+        <div class="decision-type">
+          <span class="dt-icon" style="color: var(--design);">🔀</span>
+          <span class="dt-label">多方案选择</span>
+          <span class="dt-desc">技术实现有 2+ 个合理路径，各有 trade-off</span>
+        </div>
+        <div class="decision-type">
+          <span class="dt-icon" style="color: var(--design);">🚨</span>
+          <span class="dt-label">风险升级</span>
+          <span class="dt-desc">发现安全/性能/数据一致性等可能需要人介入的问题</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Agent Autonomous Zone ── -->
+<div class="section">
+  <div class="section-title">
+    <span class="section-icon">🤖</span> Agent 自主完成区
+  </div>
+
+  <div class="agent-zone">
+    <h3>🟢 以下环节 Agent 全程自主，无需等待人工确认</h3>
+    <div class="agent-grid">
+      <div class="agent-item">
+        <div class="ai-header"><span class="ai-icon">📐</span><span class="ai-title">技术设计撰写</span></div>
+        <div class="ai-desc">基于已确认的 Spec，自动推导 API 契约、领域模型、DB 设计。遵循项目既有架构约定。</div>
+        <div class="ai-output">→ docs/design/xxx-design.md</div>
+      </div>
+      <div class="agent-item">
+        <div class="ai-header"><span class="ai-icon">🎨</span><span class="ai-title">前端设计（条件性）</span></div>
+        <div class="ai-desc">仅当满足触发条件（多步状态流转/≥3交互分支/实时协作）时自动产出组件树和交互流程。</div>
+        <div class="ai-output">→ docs/ui/xxx-ui.md（条件触发）</div>
+      </div>
+      <div class="agent-item">
+        <div class="ai-header"><span class="ai-icon">📋</span><span class="ai-title">切片任务拆解</span></div>
+        <div class="ai-desc">将功能按 API 端点拆为独立切片，每切片产出任务卡片。Agent 自主决定切片顺序（依赖优先）。</div>
+        <div class="ai-output">→ 会话内任务卡片</div>
+      </div>
+      <div class="agent-item">
+        <div class="ai-header"><span class="ai-icon">✍️</span><span class="ai-title">写测试代码（TDD-RED）</span></div>
+        <div class="ai-desc">为当前切片编写可执行测试代码。覆盖正常流程+边界+异常。跑一遍确认全部失败（RED）。</div>
+        <div class="ai-output">→ src/test/.../*Test.java</div>
+      </div>
+      <div class="agent-item">
+        <div class="ai-header"><span class="ai-icon">💻</span><span class="ai-title">编码实现（TDD-GREEN）</span></div>
+        <div class="ai-desc">按任务卡片逐项编码，目标是最小实现让测试变绿。遇到设计冲突时升级给人。</div>
+        <div class="ai-output">→ src/main/.../*.java</div>
+      </div>
+      <div class="agent-item">
+        <div class="ai-header"><span class="ai-icon">🔨</span><span class="ai-title">编译 + 测试运行</span></div>
+        <div class="ai-desc">编译验证 0 error，运行测试确认全绿。失败则回到编码阶段修复（不改测试）。</div>
+        <div class="ai-output">→ 编译报告 + 测试报告</div>
+      </div>
+      <div class="agent-item">
+        <div class="ai-header"><span class="ai-icon">📢</span><span class="ai-title">进度通报</span></div>
+        <div class="ai-desc">每完成一个切片，自动向用户通报进度。「切片 X 完成 ✅，开始切片 Y ⏳」</div>
+        <div class="ai-output">→ 飞书消息通知</div>
+      </div>
+      <div class="agent-item">
+        <div class="ai-header"><span class="ai-icon">🔄</span><span class="ai-title">文档同步更新</span></div>
+        <div class="ai-desc">编码中发现设计文档需修正时，主动更新设计文档后再继续编码，不悄悄偏离设计。</div>
+        <div class="ai-output">→ 更新 docs/design/</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TDD Inner Loop -->
+  <div class="tdd-loop">
+    <h3>🔴🟢 TDD 内循环（每个切片内部）</h3>
+    <div class="tdd-steps">
+      <div class="tdd-step">
+        <div class="ts-label">Step 1</div>
+        <div class="ts-name">📋 任务卡片</div>
+      </div>
+      <div class="tdd-arrow">→</div>
+      <div class="tdd-step">
+        <div class="ts-label">Step 2</div>
+        <div class="ts-name">✍️ 写测试</div>
+      </div>
+      <div class="tdd-arrow">→</div>
+      <div class="tdd-step red">
+        <div class="ts-label">Step 3</div>
+        <div class="ts-name">🔴 RED</div>
+      </div>
+      <div class="tdd-arrow">→</div>
+      <div class="tdd-step">
+        <div class="ts-label">Step 4</div>
+        <div class="ts-name">💻 编码</div>
+      </div>
+      <div class="tdd-arrow">→</div>
+      <div class="tdd-step">
+        <div class="ts-label">Step 5</div>
+        <div class="ts-name">🔨 编译</div>
+      </div>
+      <div class="tdd-arrow">→</div>
+      <div class="tdd-step green">
+        <div class="ts-label">Step 6</div>
+        <div class="ts-name">🟢 GREEN</div>
+      </div>
+      <div class="tdd-arrow" style="font-size: 20px; font-weight: 700;">↻</div>
+      <div class="tdd-step" style="border: 1px dashed var(--border);">
+        <div class="ts-label">下一个切片</div>
+        <div class="ts-name">或结束</div>
+      </div>
+    </div>
+    <p style="margin-top: 16px; font-size: 13px; color: var(--text-muted);">
+      ⚠️ <strong>关键仪式：</strong>Step 3 确认测试能失败（且失败原因是"代码未实现"而非测试写错），这是真假 TDD 的分水岭。
+    </p>
+  </div>
+</div>
+
+<!-- ── Optimization Strategy ── -->
+<div class="section">
+  <div class="section-title">
+    <span class="section-icon">📈</span> 持续优化策略（实践中迭代）
+  </div>
+
+  <div class="opt-framework">
+    <div class="opt-card">
+      <div class="oc-num">01</div>
+      <div class="oc-title">记录「偏离事件」</div>
+      <div class="oc-desc">
+        每当 Agent 在编码阶段发现设计文档不准确、需要临时决策并升级给人 —— 记录一次「偏离」。
+        统计偏离的类型和频率，识别 Spec 或技术设计阶段的系统性盲区。
+      </div>
+      <div class="oc-action">📊 指标：偏离次数/功能 · 偏离类型分布</div>
+    </div>
+    <div class="opt-card">
+      <div class="oc-num">02</div>
+      <div class="oc-title">追踪「文档返修率」</div>
+      <div class="oc-desc">
+        统计 Spec 确认阶段需要几轮才能通过，技术设计文档被指出多少处修正。
+        如果某个项目 Spec 平均 3+ 轮才能确认，说明 PRD 质量或 Spec 模板需要改进。
+      </div>
+      <div class="oc-action">📊 指标：确认轮数 · 单次修正点数</div>
+    </div>
+    <div class="opt-card">
+      <div class="oc-num">03</div>
+      <div class="oc-title">监控「切片粒度」</div>
+      <div class="oc-desc">
+        切片太大 → 单个切片耗时过长，反馈周期拉长。
+        切片太小 → 任务拆解开销占比过高。
+        收集每切片的实际耗时，找到「刚好够独立验证」的粒度甜点。
+      </div>
+      <div class="oc-action">📊 指标：每切片平均耗时 · 切片数/功能</div>
+    </div>
+    <div class="opt-card">
+      <div class="oc-num">04</div>
+      <div class="oc-title">TDD 真实性审计</div>
+      <div class="oc-desc">
+        定期抽查：Agent 是否真的先跑了 RED，还是跳过了直接写实现？
+        检查测试代码的覆盖率和 Mock 合理性——有没有"为了绿而绿"的假测试？
+        每 3~5 个功能做一次抽样审计。
+      </div>
+      <div class="oc-action">📊 指标：RED 跳过率 · 测试覆盖率 · Mock 合理性评分</div>
+    </div>
+    <div class="opt-card">
+      <div class="oc-num">05</div>
+      <div class="oc-title">建立「设计模式库」</div>
+      <div class="oc-desc">
+        把反复出现的领域模型、API 模式沉淀为 Skill 或参考模板。
+        例如：「标准 CRUD 设计模板」「多对多关联处理模式」「软删除设计约定」。
+        Agent 下次遇到同类需求时直接引用，减少重新推导。
+      </div>
+      <div class="oc-action">📦 产出：Skill 文件 · 设计模板库</div>
+    </div>
+    <div class="opt-card">
+      <div class="oc-num">06</div>
+      <div class="oc-title">人机决策边界动态调整</div>
+      <div class="oc-desc">
+        初期保守——多确认。跑顺畅后逐步把低风险决策下放给 Agent。
+        例如：第 1~3 个功能严格走「技术设计必须确认」，后续如果偏离率 &lt; 5%，降级为「仅通报不阻塞」。
+        以数据驱动，而非凭感觉调整。
+      </div>
+      <div class="oc-action">🔄 机制：每 5 个功能评估一次，调整决策点策略</div>
+    </div>
+    <div class="opt-card">
+      <div class="oc-num">07</div>
+      <div class="oc-title">流程版本管理</div>
+      <div class="oc-desc">
+        流程本身是资产，需要版本化。每次调整后在 dev-mode-flow.md 头部记录版本号和变更摘要。
+        Agent 执行时读取当前版本，确保行为与文档一致。
+        实践 → 发现问题 → 更新流程 → 版本号+1。
+      </div>
+      <div class="oc-action">📝 版本记录格式：v2.0 → v2.1 (2026-06-15) 调整切片粒度标准</div>
+    </div>
+    <div class="opt-card">
+      <div class="oc-num">08</div>
+      <div class="oc-title">事后回顾（Retro）</div>
+      <div class="oc-desc">
+        每个功能交付后做 5 分钟轻量回顾：
+        <br>• 流程哪个阶段最耗时？
+        <br>• 哪个阶段的产出返工最多？
+        <br>• Agent 有没有问了不该问的问题（该自主的没自主）？
+        <br>• Agent 有没有没问就该问的问题（该升级的没升级）？
+      </div>
+      <div class="oc-action">📋 触发：每次 PR review 完成后自动生成回顾摘要</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Summary Table ── -->
+<div class="section">
+  <div class="section-title">
+    <span class="section-icon">📊</span> 人机分工速查表
+  </div>
+  <div style="overflow-x: auto;">
+    <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+      <thead>
+        <tr style="background: var(--surface2);">
+          <th style="padding: 10px 14px; text-align: left; color: var(--text-bright); border-bottom: 1px solid var(--border);">阶段</th>
+          <th style="padding: 10px 14px; text-align: left; color: var(--text-bright); border-bottom: 1px solid var(--border);">谁主导</th>
+          <th style="padding: 10px 14px; text-align: left; color: var(--text-bright); border-bottom: 1px solid var(--border);">人做什么</th>
+          <th style="padding: 10px 14px; text-align: left; color: var(--text-bright); border-bottom: 1px solid var(--border);">Agent 做什么</th>
+          <th style="padding: 10px 14px; text-align: left; color: var(--text-bright); border-bottom: 1px solid var(--border);">耗时</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="padding: 10px 14px; border-bottom: 1px solid var(--border);"><span class="stage-badge badge-human" style="font-size: 11px;">① Spec</span></td>
+          <td style="padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--human); font-weight: 600;">人</td>
+          <td style="padding: 10px 14px; border-bottom: 1px solid var(--border);">确认概要方向 + 回答关键决策（2~3个）</td>
+          <td style="padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: 12px; line-height: 1.6;">读 PRD → 走决策树 → 输出概要 → 确认后展开详细 Spec</td>
+          <td style="padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--text-muted);">~3 分钟</td>
+        </tr>
+        <tr>
+          <td style="padding: 10px 14px; border-bottom: 1px solid var(--border);"><span class="stage-badge badge-human" style="font-size: 11px; background: var(--human); opacity: 0.7;">② 设计</span></td>
+          <td style="padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--human); font-weight: 600;">人（推荐）</td>
+          <td style="padding: 10px 14px; border-bottom: 1px solid var(--border);">扫一眼 API/实体/规则</td>
+          <td style="padding: 10px 14px; border-bottom: 1px solid var(--border);">写 API + DLL + DB 设计文档</td>
+          <td style="padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--text-muted);">~2 分钟</td>
+        </tr>
+        <tr>
+          <td style="padding: 10px 14px; border-bottom: 1px solid var(--border);"><span class="stage-badge badge-agent" style="font-size: 11px;">③ UI</span></td>
+          <td style="padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--agent); font-weight: 600;">Agent</td>
+          <td style="padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--text-muted);">—（仅复杂逻辑时）</td>
+          <td style="padding: 10px 14px; border-bottom: 1px solid var(--border);">写前端设计文档</td>
+          <td style="padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--text-muted);">Agent 耗时</td>
+        </tr>
+        <tr>
+          <td style="padding: 10px 14px; border-bottom: 1px solid var(--border);"><span class="stage-badge badge-agent" style="font-size: 11px;">④→⑧</span></td>
+          <td style="padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--agent); font-weight: 600;">Agent</td>
+          <td style="padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--text-muted);">—（按需提问时介入）</td>
+          <td style="padding: 10px 14px; border-bottom: 1px solid var(--border);">切片→TDD→编码→编译→测试→通报</td>
+          <td style="padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--text-muted);">Agent 耗时</td>
+        </tr>
+        <tr>
+          <td style="padding: 10px 14px;"><span class="stage-badge badge-human" style="font-size: 11px;">PR</span></td>
+          <td style="padding: 10px 14px; color: var(--human); font-weight: 600;">人</td>
+          <td style="padding: 10px 14px;">功能验收 + 代码审查</td>
+          <td style="padding: 10px 14px;">提交 PR，附测试报告</td>
+          <td style="padding: 10px 14px; color: var(--text-muted);">~10 分钟</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Footnotes -->
+<div class="footnotes">
+  <strong>💡 设计理念：</strong><br>
+  • 人定义「做什么」和「关键决策」—— Spec 概要确认 + 设计方案方向 + 最终验收<br>
+  • Agent 负责「怎么做」—— 80% 的文档推导、编码、测试<br>
+  • <strong>阶段 ① 核心原则：</strong>决策树先筛——能推导的不问，影响大的带选项问，模糊的才问。先概要后详细<br>
+  • 不是把工作全扔给 Agent，而是让人聚焦在高价值的判断上<br>
+  • 流程不是死的——持续优化策略确保它在实践中自我进化<br>
+  <br>
+  <strong>📄 文档版本：</strong>v2.1 · 2026-06-07 · 文件：<code>~/docs/harness-research/dev-mode-flow.md</code> · HTML：<code>~/docs/harness-research/dev-mode-flow-v2.html</code>
+</div>
+
+</body>
+</html>

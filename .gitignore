@@ -1,0 +1,10 @@
+# macOS
+.DS_Store
+
+# Editor
+*.swp
+*.swo
+*~
+
+# HTML is a generated view, markdown is source
+# (keep both for now)
