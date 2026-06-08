@@ -12,39 +12,37 @@ Harness 不是框架，不是工具，是一套让 AI Agent 执行软件开发�
 
 ```bash
 # 1. 在项目根目录创建上下文文件
-cp harness-v1/templates/project-context.md ./project.md
+cp dev-harness-skill/shared/project-context.md ./project.md
 # 编辑 project.md，填写你的项目信息
 
 # 2. 安装 Skill
-ln -s $(pwd)/harness-v1/skill-harness-dev-flow.md ~/.hermes/skills/harness-dev-flow/SKILL.md
+ln -s $(pwd)/dev-harness-skill/skill.md ~/.hermes/skills/harness-dev-flow/SKILL.md
 ```
 
-然后在飞书/终端对 Agent 说：**「开发 XXX 功能」**
+然后在飞书/终端对 Agent 说：**「我想做一个 XX 功能」**（进入 Phase 1）或 **「开发 XX 功能」**（进入 Phase 3）。
 
-## 目录结构
+## 四阶段流程
+
+```
+用户需求 → Phase 1: 产品与原型 → Phase 2: 架构设计(可选) → Phase 3: Spec开发 → Phase 4: 集成测试
+```
+
+## 核心目录
 
 ```
 harness-research/
-├── README.md                         # 本文件
-├── dev-mode-flow.md                  # 开发模式 v2.1 完整流程定义
-├── dev-mode-flow-v2.html             # 流程可视化
-├── runtime-elements-design.md        # 6 个运行时要素设计
-├── cron-jobs-plan.md                 # 持续优化 Cron 方案
+├── README.md
+├── dev-mode-flow.md                  # 开发模式 v2.1 完整流程
+├── runtime-elements-design.md        # 运行时要素设计
+├── cron-jobs-plan.md                 # Cron 持续优化方案
 │
-├── harness-v1/                       # ★ v1 可执行层
-│   ├── README.md                     # Harness v1 入口说明
-│   ├── skill-harness-dev-flow.md     # Skill 定义（核心）
-│   ├── rules/
-│   │   └── decision-boundary.md      # Spec 决策树判断标准
-│   ├── templates/                    # 文档模板库
-│   │   ├── project-context.md        #   项目上下文模板
-│   │   ├── spec.md                   #   Spec 模板
-│   │   ├── design.md                 #   技术设计模板
-│   │   ├── ui.md                     #   前端设计模板
-│   │   ├── test-case.md              #   测试用例模板
-│   │   ├── slice-task.md             #   切片任务卡片模板
-│   │   └── state.json                #   跨会话状态模板
-│   └── scripts/ -> ../scripts/       #   检测脚本软链
+├── dev-harness-skill/                # ★ 可执行 Skill
+│   ├── skill.md                      #   总入口
+│   ├── phase-1-product-prototype/    #   产品与原型（✅）
+│   ├── phase-2-architecture/         #   架构设计（🚧）
+│   ├── phase-3-spec-dev/             #   Spec & 开发（✅）
+│   ├── phase-4-integration-test/     #   集成测试（🚧）
+│   └── shared/                       #   共享模板
 │
 ├── scripts/                          # Cron 检测脚本
 │   ├── check_feature_milestone.py
