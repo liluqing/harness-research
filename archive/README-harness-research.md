@@ -11,12 +11,15 @@ Harness 不是框架，不是工具，是一套让 AI Agent 执行软件开发�
 ## 快速开始
 
 ```bash
-# 1. 在项目根目录创建上下文文件
-cp dev-harness-skill/shared/project-context.md ./project.md
-# 编辑 project.md，填写你的项目信息
+# 在你的项目目录下执行（或指定目录）
+./scripts/harness-init.sh /path/to/your-project
 
-# 2. 安装 Skill
-ln -s $(pwd)/dev-harness-skill/skill.md ~/.hermes/skills/harness-dev-flow/SKILL.md
+# 脚本会自动：
+# ① 检测技术栈（Java/Node/Python/Go/.NET）
+# ② 引导填写项目信息
+# ③ 生成 project.md（项目上下文）
+# ④ 部署 Skill 到 ~/.hermes/skills/
+# ⑤ 创建 docs/ 和 prd/ 目录结构
 ```
 
 然后在飞书/终端对 Agent 说：**「我想做一个 XX 功能」**（进入 Phase 1）或 **「开发 XX 功能」**（进入 Phase 3）。
@@ -24,7 +27,7 @@ ln -s $(pwd)/dev-harness-skill/skill.md ~/.hermes/skills/harness-dev-flow/SKILL.
 ## 四阶段流程
 
 ```
-用户需求 → Phase 1: 产品与原型 → Phase 2: 架构设计(可选) → Phase 3: Spec开发 → Phase 4: 集成测试
+用户需求 → Phase 1: 产品与原型 → Phase 2: 架构设计(建议) → Phase 3: Spec开发 → Phase 4: 集成测试
 ```
 
 ## 核心目录
@@ -39,9 +42,9 @@ harness-research/
 ├── dev-harness-skill/                # ★ 可执行 Skill
 │   ├── skill.md                      #   总入口
 │   ├── phase-1-product-prototype/    #   产品与原型（✅）
-│   ├── phase-2-architecture/         #   架构设计（🚧）
+│   ├── phase-2-architecture/         #   架构设计（✅）
 │   ├── phase-3-spec-dev/             #   Spec & 开发（✅）
-│   ├── phase-4-integration-test/     #   集成测试（🚧）
+│   ├── phase-4-integration-test/     #   集成测试（✅）
 │   └── shared/                       #   共享模板
 │
 ├── scripts/                          # Cron 检测脚本
